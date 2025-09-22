@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+build/
+dist/
+
+# Virtual env
+.venv/
+venv/
+env/
+
+# IDEs
+.idea/
+.vscode/
+
+# SO
+.DS_Store
+Thumbs.db
+
+#Data: versionar só problema.txt
+data/*
+!data/problema.txt
