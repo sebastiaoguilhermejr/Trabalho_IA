@@ -67,5 +67,3 @@ print(print(f"Caminho Busca Bidirecional: {caminhoBuscaBidirecional}, Custo: {le
 
 
 
-
-
