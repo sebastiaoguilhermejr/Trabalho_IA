@@ -1,0 +1,64 @@
+<!DOCTYPE>
+<html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0">
+    <title>Vizualidor de grafos</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 50px;
+        }
+
+        #controls {
+            margin-bottom: 20px;
+        }
+
+        #graph-container {
+            border: 1px solid #ccc;
+            padding: 10px;
+            min-height: 400px;
+            min-width: 600px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        img {
+            max-width: 100%;
+            max-height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Selecione um grafo para visualizar</h1>
+    <div id="controls">
+        <form action="gerar_grafo" method="post">
+            <label for="graph_type" id="graph_type"></label>
+            <select name="graph_type" id="graph_type">
+                <option value="Amplitude"></option>
+                <option value="Profundidade"></option>
+                <option value="Profundidade Limitada"></option>
+                <option value="Aprofuntamento Iterativo"></option>
+                <option value="busca Bidirecional"></option>
+            </select>
+            <button type="submit">Gerar e Exibir</button>
+        </form>
+    </div>
+    <div id="graph_container">
+        {% if graph_image %}
+        <img src="https://github.com/sebastiaoguilhermejr/Trabalho_IA/blob/8ca8f8f4c11441f6d9567ca3addf4119e7aebdf2/src/Front.py"
+            alt="Grafo Gerado">
+        {% else %}
+        <p>O grafo será exibido aqui</p>
+        {% endif %}
+    </div>
+</body>
+
+</html>

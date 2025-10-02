@@ -1,7 +1,6 @@
 from pyvis.network import Network
 import matplotlib.pyplot as plt
 import networkx as nx
-from BuscaNP import BuscaNP as bnp
 import Main
 
 caminhoAmplitude = Main.caminhoAmplitude
