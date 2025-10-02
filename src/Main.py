@@ -1,68 +1,29 @@
-from pathlib import Path
-import ast
-from BuscaNP import BuscaNP
+from io_problema import construir_grafo
+from PickingSlotting import PickingSlotting
 
-def caminho_problema() -> Path:
-    raiz = Path(__file__).resolve().parents[1]
-    arq = raiz / 'data' /'problema.txt'
-    if not arq.exists():
-        raise FileNotFoundError(f"Não encontrou o arquivo: {arq}")
-    return arq
+def main():
+    nos, grafo = construir_grafo()
+    ps = PickingSlotting(nos, grafo)
 
-def ler_problema() -> str:
-    return caminho_problema().read_text(encoding="utf-8")
+    caminho, custo = ps.resolver_picking(0, [10,15,9,6],"AMPLITUDE",fechar_ciclo=True)
+    print("CAMINHO: ", caminho)
+    print("CUSTO: ", custo)
 
-def parse_linha(linha:str) -> tuple[int, list[int]]:
-    linha = linha.strip()
-    u_str, rhs = linha.split(':', 1)
-    u = int(u_str.strip())
-    viz = ast.literal_eval(rhs.strip())
-    return u, [int(v) for v in viz]
+    caminho2, custo2 = ps.resolver_picking(0,[10,15,9,6],"AMPLITUDE",fechar_ciclo=False)
+    print("CAMINHO2: ", caminho2)
+    print("CUSTO2: ", custo2)
 
-texto = ler_problema()
-
-linhas = []
-for ln in texto.splitlines():
-    s = ln.strip()
-    if s and not s.startswith('#'):
-        linhas.append(s)
+    ranking = ps.rank_slots_por_distancia(0, [2,10,11,13], method="AMPLITUDE")
+    print("Ranking: ", ranking)
 
 
 
-adj = {}
-for ln in linhas:
-    u, viz = parse_linha(ln)
-    adj[u] = viz
 
-
-total = 30
-nos = list(range(total))
+if __name__ == "__main__":
+    main()
 
 
 
-for u in nos:
-    adj.setdefault(u, [])
-    adj[u] = sorted(adj[u])
-
-grafo =  [adj[u] for u in nos]
-
-b = BuscaNP()
-inicio, fim = 5, 27
-caminhoAmplitude = b.amplitude(inicio,fim,nos,grafo)
-print(f"Caminho amplitude: {caminhoAmplitude}, Custo: {len(caminhoAmplitude) -1}")
-
-caminhoProfundidade = b.profundidade(inicio,fim,nos,grafo)
-print(f"Caminho profundidade: {caminhoProfundidade}, Custo: {len(caminhoProfundidade) -1}")
-
-caminhoProfundidadeLimitada = b.prof_limitada(inicio,fim,nos,grafo,20)
-print(f"Caminho profundidade limitda: {caminhoProfundidadeLimitada}, Custo: {len(caminhoProfundidadeLimitada) -1}")
-
-
-caminhoAprofundamentoIterativo = b.aprof_iterativo(inicio,fim,nos,grafo,10)
-print(f"Caminho aprofundamento iterativo: {caminhoAprofundamentoIterativo}, Custo: {len(caminhoAprofundamentoIterativo) -1}")
-
-caminhoBuscaBidirecional = b.bidirecional(inicio,fim,nos,grafo)
-print(print(f"Caminho Busca Bidirecional: {caminhoBuscaBidirecional}, Custo: {len(caminhoBuscaBidirecional) -1}"))
 
 
 
