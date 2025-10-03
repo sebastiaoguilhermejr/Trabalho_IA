@@ -53,8 +53,7 @@
     </div>
     <div id="graph_container">
         {% if graph_image %}
-        <img src="https://github.com/sebastiaoguilhermejr/Trabalho_IA/blob/8ca8f8f4c11441f6d9567ca3addf4119e7aebdf2/src/Front.py"
-            alt="Grafo Gerado">
+        <img src="{{ url_for('static', filename=graph_image) }}" alt="Grafo Gerado">
         {% else %}
         <p>O grafo será exibido aqui</p>
         {% endif %}
