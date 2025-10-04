@@ -1,5 +1,4 @@
 import itertools
-
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
@@ -356,6 +355,3 @@ def processar_formulario():
     else:
         msg = f'Nós: {nos_str}\nGrafo:\n{grafo_str}'
         messagebox.showinfo('Dados do Grafo', msg)
-    # Removido código Flask. Função agora apenas mostra os dados do grafo em popup.
-
-
