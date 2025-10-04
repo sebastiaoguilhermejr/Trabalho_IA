@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Visualização de Caminhos</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: auto;
+        }
+
+        img {
+            max-width: 100%;
+            margin-top: 20px;
+            border: 1px solid #ccc;
+        }
+
+        select,
+        button {
+            padding: 8px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h2>Selecione o Caminho para Visualizar</h2>
+        <form method="POST" action="/gerar_grafo">
+            <label for="graph_type">Tipo de Caminho:</label>
+            <select name="graph_type" id="graph_type">
+                <option value="Amplitude">Amplitude</option>
+                <option value="Profundidade">Profundidade</option>
+                <option value="ProfundidadeLimitada">Profundidade Limitada</option>
+                <option value="AprofundamentoIterativo">Aprofundamento Iterativo</option>
+                <option value="BuscaBidirecional">Busca Bidirecional</option>
+            </select>
+            <br><br>
+            <label for="nos">Lista de Nós (ex: 0,1,2,3):</label>
+            <input type="text" name="nos" id="nos" required value="{{ nos }}">
+            <br><br>
+            <label for="grafo">Grafo (lista de adjacências, uma linha por nó, ex: 1,2\n0,3\n0,3\n1,2):</label>
+            <textarea name="grafo" id="grafo" rows="10" required>{{ grafo }}</textarea>
+            <br><br>
+            <label for="inicio">Nó Inicial:</label>
+            <input type="number" name="inicio" id="inicio" required>
+            <br><br>
+            <label for="fim">Nó Final:</label>
+            <input type="number" name="fim" id="fim" required>
+            <br><br>
+            <button type="submit">Gerar e Exibir</button>
+        </form>
+        {% if error %}
+        <p style="color:red;">{{ error }}</p>
+        {% endif %}
+        {% if graph_image %}
+        <h3>Grafo Gerado:</h3>
+        <img src="{{ url_for('static', filename=graph_image) }}" alt="Grafo Gerado">
+        <p>Caminho: {{ caminho }}</p>
+        {% else %}
+        <p>O grafo será exibido aqui</p>
+        {% endif %}
+    </div>
+</body>
+
+</html>
