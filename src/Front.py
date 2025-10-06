@@ -47,7 +47,7 @@ def exibir_grafo():
     if erro:
         messagebox.showerror('Erro', erro)
         return
-    # Gerar subgrafo do caminho percorrido
+    # Sempre mostrar o grafo completo, destacando o caminho percorrido
     try:
         from PickingSlotting import PickingSlotting
         ps = PickingSlotting(nos, grafo)
@@ -60,45 +60,29 @@ def exibir_grafo():
         opcoes = []
         melhor_caminho = caminho
         melhor_custo = custo
-        # Para métodos que retornam apenas o melhor, exibe só ele
         opcoes.append((caminho, custo))
-        # Exibir na interface
         texto_opcoes = ''
         for idx, (cam, cst) in enumerate(opcoes):
             texto_opcoes += f'Opção {idx+1}: {cam} | Custo: {cst}\n'
         texto_opcoes += f'\nMelhor caminho: {melhor_caminho} | Menor custo: {melhor_custo}'
         opcoes_label.config(text=texto_opcoes)
-    except Exception as e:
-        caminho = None
-        opcoes_label.config(text='Não foi possível encontrar caminho.')
 
-        if caminho and len(caminho) > 1:
-            G = nx.Graph()
-            edges_caminho = list(zip(caminho, caminho[1:]))
-            G.add_nodes_from(caminho)
-            G.add_edges_from(edges_caminho)
-            pos = {}
-            # Distribuir os nós em linha
-            for idx, node in enumerate(caminho):
-                pos[node] = (idx, 0)
-            plt.figure(figsize=(1.5 * len(caminho), 2))
-            nx.draw(G, pos, with_labels=True, node_color='orange', edge_color='red', width=2, font_weight='bold', node_size=600)
-            plt.title(f'Caminho: {caminho}')
-        else:
-            # Se não há caminho, mostrar grafo completo
-            G = nx.Graph()
-            for i, adj in zip(nos, grafo):
-                for j in adj:
-                    G.add_edge(i, j)
-            pos = nx.circular_layout(G)
-            plt.figure(figsize=(5, 4))
-            nx.draw(G, pos, with_labels=True, node_color='lightblue', edge_color='gray')
-            plt.title('Grafo completo (sem caminho)')
-
+        # Grafo completo
+        G = nx.Graph()
+        for i, adj in zip(nos, grafo):
+            for j in adj:
+                G.add_edge(i, j)
+        # Destaca os nós e arestas do caminho
+        edges_caminho = list(zip(melhor_caminho, melhor_caminho[1:])) if melhor_caminho else []
+        node_colors = ['orange' if melhor_caminho and n in melhor_caminho else 'lightblue' for n in G.nodes()]
+        edge_colors = ['red' if melhor_caminho and ((u, v) in edges_caminho or (v, u) in edges_caminho) else 'gray' for u, v in G.edges()]
+        pos = nx.spring_layout(G)
+        plt.figure(figsize=(8, 6))
+        nx.draw(G, pos, with_labels=True, node_color=node_colors, edge_color=edge_colors, width=2, font_weight='bold', node_size=600)
+        plt.title(f'Caminho Percorrido: {melhor_caminho}')
         img_path = os.path.join(os.path.dirname(__file__), 'grafo_temp.png')
         plt.savefig(img_path)
         plt.close()
-        # Exibir imagem no Tkinter
         try:
             img = Image.open(img_path)
             img = img.resize((300, 240))
@@ -112,6 +96,8 @@ def exibir_grafo():
                 exibir_grafo.img_label.pack(pady=10)
         except Exception as e:
             messagebox.showerror('Erro', f'Falha ao exibir imagem: {e}')
+    except Exception as e:
+        opcoes_label.config(text=f'Não foi possível encontrar caminho. Erro: {e}')
     nos_str = ','.join(str(n) for n in nos)
     grafo_str = '\n'.join(','.join(str(x) for x in adj) for adj in grafo)
     return nos, grafo, nos_str, grafo_str, None
