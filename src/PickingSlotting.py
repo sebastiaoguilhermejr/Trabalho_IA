@@ -1,35 +1,48 @@
 from typing import Optional, List, Tuple, Sequence
 from math import inf
 from BuscaNP import BuscaNP
+from BuscaP import busca as BuscaP
 
 class PickingSlotting(object):
-    def __init__(self, nos: Sequence[int], grafo: Sequence[Sequence[int]]):
-        self.nos = list(nos)
-        self.grafo = [list(adj) for adj in grafo]
-        self.busca = BuscaNP()
+    def __init__(self, nos: Sequence[int], grafo: Sequence[Sequence[tuple[int, float]]]):
+        self.nos: list[int] = list(nos)
+        ## Grafo ponderado
+        self.grafo_p: list[list[tuple[int, float]]] =   [list(adj) for adj in grafo]
+        ##Grafo não ponderado
+        self.grafo_np: list[list[int]] = [[v for (v, _) in adj] for adj in self.grafo_p]
+        self.buscaNP = BuscaNP()
+        self.buscaP = BuscaP()
 
     def caminho_e_custo(self, method: str, inicio: int, fim: int, *, lim: Optional[int] = None,
                         lim_max: Optional[int] = None):
         method = method.upper().strip()
         if method == "AMPLITUDE":
-            cam = self.busca.amplitude(inicio, fim, self.nos, self.grafo)
+            cam = self.buscaNP.amplitude(inicio, fim, self.nos, self.grafo_np)
         elif method == "PROFUNDIDADE":
-            cam = self.busca.profundidade(inicio, fim, self.nos, self.grafo)
+            cam = self.buscaNP.profundidade(inicio, fim, self.nos, self.grafo_np)
         elif method in ("PROFUNDIDADE_LIMITADA", "PROF_LIMITADA"):
             if lim is None:
                 raise ValueError("Profundidade limitada requer lim")
-            cam = self.busca.prof_limitada(inicio, fim, self.nos, self.grafo, lim)
+            cam = self.buscaNP.prof_limitada(inicio, fim, self.nos, self.grafo_np, lim)
         elif method == "APROFUNDAMENTO_ITERATIVO":
             if lim_max is None:
                 raise ValueError("Aprofundamento iterativo requer lim_max")
-            cam = self.busca.aprof_iterativo(inicio, fim, self.nos, self.grafo, lim_max)
+            cam = self.buscaNP.aprof_iterativo(inicio, fim, self.nos, self.grafo_np, lim_max)
         elif method in ("BUSCA BIDIRECIONAL", "BIDIRECIONAL"):
-            cam = self.busca.bidirecional(inicio, fim, self.nos, self.grafo)
+            cam = self.buscaNP.bidirecional(inicio, fim, self.nos, self.grafo_np)
+        elif method == "CUSTO_UNIFORME":
+            return self.buscaP.custo_uniforme(inicio, fim, self.nos, self.grafo_p)
+        elif method == "GREEDY":
+            return self.buscaP.greedy(inicio, fim, self.nos, self.grafo_p)
+        elif method == "A_ESTRELA":
+            return self.buscaP.a_estrela(inicio, fim, self.nos, self.grafo_p)
+        elif method == "AIA_ESTRELA":
+            return self.buscaP.aia_estrela(inicio, fim, self.nos, self.grafo_p)
         else:
             raise ValueError(f"Método desconhecido: {method}")
 
         if not cam:
-            return None, None
+            return None
         return cam, len(cam) - 1
 
     def fechamento_metrico(self, P: list[int], *, method: str, lim: Optional[int] = None,
