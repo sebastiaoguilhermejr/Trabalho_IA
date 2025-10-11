@@ -57,8 +57,9 @@ class PickingSlotting(object):
             for j, t in enumerate(P):
                 if i == j:
                     continue
-                cam, custo = self.caminho_e_custo(method, s, t, lim=lim, lim_max=lim_max)
-                if cam is not None:
+                result = self.caminho_e_custo(method, s, t, lim=lim, lim_max=lim_max)
+                if result is not None:
+                    cam, custo = result
                     M[i][j] = custo
         return M
 
@@ -97,9 +98,10 @@ class PickingSlotting(object):
 
         for i_idx, j_idx in pares:
             s, t = P[i_idx], P[j_idx]
-            cam, custo = self.caminho_e_custo(method, s, t, lim=lim, lim_max=lim_max)
-            if cam is None:
+            result = self.caminho_e_custo(method, s, t, lim=lim, lim_max=lim_max)
+            if result is None:
                 return [], inf
+            cam, custo = result
             if not caminho_total:
                 caminho_total.extend(cam)
             else:

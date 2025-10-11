@@ -17,13 +17,21 @@ def carregar_grafo_do_arquivo():
                 parte_no, parte_adj = linha.split(':')
                 no = int(parte_no.strip())
                 adj = parte_adj.strip().replace('[', '').replace(']', '').split(',')
-                adj = [int(x) for x in adj if x.strip()]
+                adj = [x.strip() for x in adj if x.strip()]
+                # Se o grafo tem pesos, cada par (vizinho, peso)
+                adj_pesos = []
+                i = 0
+                while i < len(adj):
+                    vizinho = int(adj[i])
+                    peso = int(adj[i+1]) if i+1 < len(adj) else 1
+                    adj_pesos.append([vizinho, peso])
+                    i += 2
                 nos.append(no)
-                grafo.append(adj)
+                grafo.append(adj_pesos)
     except Exception as e:
         return [], [], [], '', f"Erro ao ler problema.txt: {e}"
     nos_str = ','.join(str(n) for n in nos)
-    grafo_str = '\n'.join(','.join(str(x) for x in adj) for adj in grafo)
+    grafo_str = '\n'.join(','.join(f"[{x[0]},{x[1]}]" for x in adj) for adj in grafo)
     return nos, grafo, nos_str, grafo_str, None
 
 def exibir_grafo():
@@ -70,8 +78,12 @@ def exibir_grafo():
         # Grafo completo
         G = nx.Graph()
         for i, adj in zip(nos, grafo):
-            for j in adj:
-                G.add_edge(i, j)
+            for item in adj:
+                if isinstance(item, (list, tuple)) and len(item) >= 1:
+                    vizinho = item[0]
+                else:
+                    vizinho = item
+                G.add_edge(i, vizinho)
         # Destaca os nós e arestas do caminho
         edges_caminho = list(zip(melhor_caminho, melhor_caminho[1:])) if melhor_caminho else []
         node_colors = ['orange' if melhor_caminho and n in melhor_caminho else 'lightblue' for n in G.nodes()]
@@ -141,30 +153,29 @@ def main():
         # Calcula o menor caminho global usando AMPLITUDE
         from PickingSlotting import PickingSlotting
         ps_global = PickingSlotting(nos, grafo)
-        if pontos:
-            melhores_global = []
-            pontos_sem_destino = [p for p in pontos if p != destino]
-            for perm in itertools.permutations(pontos_sem_destino):
-                P = [inicio] + list(perm) + [destino]
-                matriz = ps_global.fechamento_metrico(P, method='AMPLITUDE')
-                ordem_idx = list(range(len(P)))
-                caminho_total, custo_total = ps_global.custo_e_rota_expandida(ordem_idx, P, method='AMPLITUDE', fechar_ciclo=False)
-                if caminho_total:
-                    melhores_global.append((caminho_total, custo_total))
-            melhores_global_validos = [(cam, cst) for cam, cst in melhores_global if cam and cst is not None and cst < float('inf')]
-            if melhores_global_validos:
-                melhores_global_validos.sort(key=lambda x: x[1])
-                menor_caminho_global, menor_custo_global = melhores_global_validos[0]
-            else:
-                menor_caminho_global, menor_custo_global = None, None
+        if metodo == 'CUSTO UNIFORME':
+            from BuscaP import busca
+            buscador = busca()
+            caminho, custo = buscador.custo_uniforme(inicio, destino, nos, grafo)
+            opcoes = [(caminho, custo)]
+            melhor_caminho = caminho
+            melhor_custo = custo
         else:
-            menor_caminho_global, menor_custo_global = ps_global.caminho_e_custo('AMPLITUDE', inicio, destino)
-    # global já declarado no início da função main
-        metodo = tipo_var.get()
-        inicio_str = inicio_var.get()
-        destino_str = destino_var.get()
-        pontos_str = pontos_var.get()
-        lim_str = lim_var.get()
+            from PickingSlotting import PickingSlotting
+            ps = PickingSlotting(nos, grafo)
+            picklist = pontos + [destino]
+            if metodo in ['PROFUNDIDADE_LIMITADA', 'PROF_LIMITADA', 'APROFUNDAMENTO_ITERATIVO']:
+                caminho, custo = ps.resolver_picking(inicio, picklist, metodo, lim=lim, lim_max=lim_max)
+            else:
+                caminho, custo = ps.resolver_picking(inicio, picklist, metodo)
+            opcoes = [(caminho, custo)]
+            melhor_caminho = caminho
+            melhor_custo = custo
+        texto_opcoes = ''
+        for idx, (cam, cst) in enumerate(opcoes):
+            texto_opcoes += f'Opção {idx+1}: {cam} | Custo: {cst}\n'
+        texto_opcoes += f'\nMelhor caminho: {melhor_caminho} | Menor custo: {melhor_custo}'
+        opcoes_label.config(text=texto_opcoes)
         lim_max_str = lim_max_var.get()
         try:
             inicio = int(inicio_str)
@@ -231,6 +242,9 @@ def main():
         texto_opcoes += 'Outras opções pelo método selecionado:\n'
         for idx, (cam, cst) in enumerate(melhores_validos[1:]):
             texto_opcoes += f'Opção {idx+2}: {cam} | Custo: {cst}\n'
+        # Só exibe recomendação se as variáveis existirem
+        menor_caminho_global = globals().get('menor_caminho_global', None)
+        menor_custo_global = globals().get('menor_custo_global', None)
         if menor_caminho_global and menor_custo_global is not None:
             texto_opcoes += f'\nRecomendação: Menor caminho global (AMPLITUDE):\n{menor_caminho_global} | Custo: {menor_custo_global}\n'
         else:
@@ -238,6 +252,8 @@ def main():
         opcoes_label.config(text=texto_opcoes)
         # Mensagem popup informando o melhor caminho escolhido e recomendação
         msg_popup = f'Método: {metodo}\nO melhor caminho escolhido foi: {melhor_caminho}\nCusto: {melhor_custo}'
+        menor_caminho_global = globals().get('menor_caminho_global', None)
+        menor_custo_global = globals().get('menor_custo_global', None)
         if menor_caminho_global and menor_custo_global is not None:
             msg_popup += f'\n\nRecomendação: Menor caminho global (AMPLITUDE):\n{menor_caminho_global} | Custo: {menor_custo_global}'
         else:
@@ -248,8 +264,12 @@ def main():
             # Grafo completo
             G = nx.Graph()
             for i, adj in zip(nos, grafo):
-                for j in adj:
-                    G.add_edge(i, j)
+                for item in adj:
+                    if isinstance(item, (list, tuple)) and len(item) >= 1:
+                        vizinho = item[0]
+                    else:
+                        vizinho = item
+                    G.add_edge(i, vizinho)
             # Destaca os nós e arestas do caminho
             edges_caminho = list(zip(melhor_caminho, melhor_caminho[1:]))
             node_colors = ['orange' if n in melhor_caminho else 'lightblue' for n in G.nodes()]
@@ -314,7 +334,8 @@ def main():
         'PROF_LIMITADA',
         'APROFUNDAMENTO_ITERATIVO',
         'BUSCA BIDIRECIONAL',
-        'BIDIRECIONAL'
+        'BIDIRECIONAL',
+        'CUSTO UNIFORME'
     ]
     tipo_combo.pack(pady=10)
 
@@ -333,11 +354,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-def processar_formulario():
-    nos, grafo, nos_str, grafo_str, erro = carregar_grafo_do_arquivo()
-    if erro:
-        messagebox.showerror('Erro', erro)
-    else:
-        msg = f'Nós: {nos_str}\nGrafo:\n{grafo_str}'
-        messagebox.showinfo('Dados do Grafo', msg)
