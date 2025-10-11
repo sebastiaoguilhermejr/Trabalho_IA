@@ -1,5 +1,6 @@
 from collections import deque
 from NodeP import NodeP
+from PQueue import PQueue
 
 class busca(object):
 #--------------------------------------------------------------------------
@@ -16,6 +17,7 @@ class busca(object):
 #--------------------------------------------------------------------------    
 # INSERE NA LISTA MANTENDO-A ORDENADA
 #--------------------------------------------------------------------------    
+
     def inserir_ordenado(self,lista, no):
         for i, n in enumerate(lista):
             if no.v1 < n.v1:
@@ -23,6 +25,7 @@ class busca(object):
                 break
         else:
             lista.append(no)
+
 #--------------------------------------------------------------------------    
 # EXIBE O CAMINHO ENCONTRADO NA ÁRVORE DE BUSCA
 #--------------------------------------------------------------------------    
@@ -104,209 +107,158 @@ class busca(object):
 # -----------------------------------------------------------------------------
 # CUSTO UNIFORME
 # -----------------------------------------------------------------------------
-    ##def custo_uniforme(self,inicio,fim,mapa,nx,ny):
-    def custo_uniforme(self, inicio, fim, nos, grafo): #grafo
-        # Origem igual a destino
+
+    def custo_uniforme(self, inicio, fim, nos, grafo):
         if inicio == fim:
             return [inicio]
-        
-        # Fila de prioridade baseada em deque + inserção ordenada
-        lista = deque()
-        #t_inicio = tuple(inicio)   # grid
-        raiz = NodeP(None, inicio, 0, None, None, 0) # grafo
-        #raiz = NodeP(None, t_inicio,0, None, None, 0)  # grid
-        lista.append(raiz)
-    
-        # Controle de nós visitados
-        visitado = {inicio: raiz}
-        #visitado = {tuple(inicio): raiz}    # grid
-        
-        # loop de busca
-        while lista:
-            # remove o primeiro nó
-            atual = lista.popleft()
-            valor_atual = atual.v2
-    
-            # Chegou ao objetivo: UCS garante ótimo (custos >= 0)
+
+        pq = PQueue()
+        raiz = NodeP(None, inicio, 0.0, None, None, 0.0)  # v1 = g, v2 = g
+        pq.push(raiz.v1, raiz)
+
+        best_g = {inicio: 0.0}
+
+        while pq:
+            atual = pq.pop()
+
+            if atual.v2 > best_g.get(atual.estado, float('inf')):
+                continue
+
             if atual.estado == fim:
-                caminho = self.exibirCaminho(atual)
-                return caminho, atual.v2
-    
-            # Gera sucessores; esperado: [(estado_suc, custo_aresta), ...]
+                return self.exibirCaminho(atual), atual.v2
+
             ind = nos.index(atual.estado)
-            filhos = self.sucessores_grafo(ind, grafo, 1)
-            
-            # Gera sucessores a partir do grid
-            #filhos = self.sucessores_grid(atual.estado,nx,ny,mapa) # grid
-    
-            for novo in filhos: # grafo
-            #for novo in filhos: # grid
-                # custo acumulado até o sucessor
-                v2 = valor_atual + novo[1]
-                v1 = v2 
-    
-                # Não visitado ou custo melhor
-               # t_novo = tuple(novo[0])       # grid
-                #if (t_novo not in visitado) or (v2<visitado[t_novo].v2): # grid
-                if (novo[0] not in visitado) or (v2 < visitado[novo[0]].v2):
-                    #filho = NodeP(atual,t_novo, v1, None, None, v2) # grid
-                    filho = NodeP(atual, novo[0], v1, None, None, v2) # grafo
-                    visitado[novo[0]] = filho #grafo
-                    #visitado[t_novo] = filho # grid
-                    self.inserir_ordenado(lista, filho)
-    
-        # Sem caminho
+            for (suc, w) in grafo[ind]:
+                g2 = atual.v2 + float(w)
+                if g2 < best_g.get(suc, float('inf')):
+                    best_g[suc] = g2
+                    filho = NodeP(atual, suc, g2, None, None, g2)  # f=g
+                    pq.push(filho.v1, filho)
+
         return None
-# -----------------------------------------------------------------------------
+
+    # -----------------------------------------------------------------------------
 # GREEDY
 # -----------------------------------------------------------------------------
     def greedy(self, inicio, fim, nos, grafo):
-        # Origem igual a destino
         if inicio == fim:
             return [inicio]
-        
-        # Fila de prioridade baseada em deque + inserção ordenada
-        lista = deque()
-        
-        raiz = NodeP(None, inicio, 0, None, None, 0)
-    
-        lista.append(raiz)
-    
-        # Controle de nós visitados
-        visitado = {inicio: raiz}
-        
-        # loop de busca
-        while lista:
-            # remove o primeiro nó
-            atual = lista.popleft()
-            valor_atual = atual.v2
-    
-            # Se já registramos um nó melhor para este estado, este está obsoleto
-            #if visitado.get(atual.estado) is not atual:
-            #    continue
-    
-            # Chegou ao objetivo: UCS garante ótimo (custos >= 0)
+
+        pq = PQueue()
+        g0 = 0.0
+        h0 = float(self.heuristica_grafo(nos, fim, inicio))
+        raiz = NodeP(None, inicio, h0, None, None, g0)  # f = h
+        pq.push(raiz.v1, raiz)
+
+        best_g = {inicio: 0.0}
+
+        while pq:
+            atual = pq.pop()
+
+            if atual.v2 > best_g.get(atual.estado, float('inf')):
+                continue
+
             if atual.estado == fim:
-                caminho = self.exibirCaminho(atual)
-                return caminho, atual.v2
-    
-            # Gera sucessores; esperado: [(estado_suc, custo_aresta), ...]
+                return self.exibirCaminho(atual), atual.v2
+
             ind = nos.index(atual.estado)
-            filhos = self.sucessores_grafo(ind, grafo, 1)
-    
-            for novo in filhos:
-                # custo acumulado até o sucessor
-                v2 = valor_atual + novo[1]
-                v1 = self.heuristica_grafo(nos,novo[0],fim) 
-    
-                # relaxamento: nunca visto ou custo melhor
-                if (novo[0] not in visitado) or (v2 < visitado[novo[0]].v2):
-                    filho = NodeP(atual, novo[0], v1, None, None, v2)
-                    visitado[novo[0]] = filho
-                    self.inserir_ordenado(lista, filho)
-    
-        # Sem caminho
-        return None  
-# -----------------------------------------------------------------------------
+            for (suc, w) in grafo[ind]:
+                g2 = atual.v2 + float(w)
+                if g2 < best_g.get(suc, float('inf')):
+                    best_g[suc] = g2
+                    h = float(self.heuristica_grafo(nos, fim, suc))
+                    filho = NodeP(atual, suc, h, None, None, g2)  # f = h
+                    pq.push(filho.v1, filho)
+
+        return None
+
+    # -----------------------------------------------------------------------------
 # A ESTRELA
 # -----------------------------------------------------------------------------
-    def a_estrela(self,inicio,fim,nos,grafo,):
-        # Origem igual a destino
+    def a_estrela(self, inicio, fim, nos, grafo):
         if inicio == fim:
             return [inicio]
-        
-        # Fila de prioridade baseada em deque + inserção ordenada
-        lista = deque()
-        
-        raiz = NodeP(None, inicio, 0, None, None, 0)
-    
-        lista.append(raiz)
-    
-        # Controle de nós visitados
-        visitado = {inicio: raiz}
-        
-        # loop de busca
-        while lista:
-            # remove o primeiro nó
-            atual = lista.popleft()
-            valor_atual = atual.v2
-    
-            # Chegou ao objetivo
+
+        pq = PQueue()
+        g0 = 0.0
+        h0 = float(self.heuristica_grafo(nos, fim, inicio))
+        raiz = NodeP(None, inicio, g0 + h0, None, None, g0)  # f = g + h
+        pq.push(raiz.v1, raiz)
+
+        best_g = {inicio: 0.0}
+
+        while pq:
+            atual = pq.pop()
+
+            if atual.v2 > best_g.get(atual.estado, float('inf')):
+                continue
+
             if atual.estado == fim:
-                caminho = self.exibirCaminho(atual)
-                return caminho, atual.v2
-    
-            # Gera sucessores; esperado: [(estado_suc, custo_aresta), ...]
+                return self.exibirCaminho(atual), atual.v2
+
             ind = nos.index(atual.estado)
-            filhos = self.sucessores_grafo(ind, grafo, 1)
-    
-            for novo in filhos:
-                # custo acumulado até o sucessor
-                v2 = valor_atual + novo[1]
-                v1 = v2 + self.heuristica_grafo(nos,novo[0],fim) 
-    
-                # relaxamento: nunca visto ou custo melhor
-                if (novo[0] not in visitado) or (v2 < visitado[novo[0]].v2):
-                    filho = NodeP(atual, novo[0], v1, None, None, v2)
-                    visitado[novo[0]] = filho
-                    self.inserir_ordenado(lista, filho)
-    
-        # Sem caminho
+            for (suc, w) in grafo[ind]:
+                g2 = atual.v2 + float(w)
+                if g2 < best_g.get(suc, float('inf')):
+                    best_g[suc] = g2
+                    h = float(self.heuristica_grafo(nos, fim, suc))
+                    f = g2 + h
+                    filho = NodeP(atual, suc, f, None, None, g2)  # f = g + h
+                    pq.push(filho.v1, filho)
+
         return None
-# -----------------------------------------------------------------------------
+
+    # -----------------------------------------------------------------------------
 # AI ESTRELA
 # -----------------------------------------------------------------------------       
-    def aia_estrela(self,inicio,fim,nos,grafo):
-        # Origem igual a destino
+    def aia_estrela(self, inicio, fim, nos, grafo):
+
         if inicio == fim:
-            return [inicio]
-        
-        limite = self.heuristica_grafo(nos,inicio,fim) 
-        # Fila de prioridade baseada em deque + inserção ordenada
-        lista = deque()
-        
-        # Busca iterativa
+            return [inicio], 0.0, 0.0
+
+        limite = float(self.heuristica_grafo(nos, fim, inicio))
+
         while True:
-            lim_acima = []
-            
-            raiz = NodeP(None, inicio, 0, None, None, 0)       
+            from collections import deque
+            lista = deque()
+            raiz = NodeP(None, inicio, 0.0 + float(self.heuristica_grafo(nos, fim, inicio)), None, None, 0.0)  # v1=f, v2=g
             lista.append(raiz)
-        
-            # Controle de nós visitados
             visitado = {inicio: raiz}
 
+
+            min_acima = float("inf")
+
             while lista:
-                # remove o primeiro nó
                 atual = lista.popleft()
-                valor_atual = atual.v2
-                
-                # Chegou ao objetivo
+                g = atual.v2
+                h_atual = float(self.heuristica_grafo(nos, fim, atual.estado))
+                f_atual = g + h_atual
+
+                if f_atual > limite:
+                    if f_atual < min_acima:
+                        min_acima = f_atual
+                    continue
+
                 if atual.estado == fim:
-                    caminho = self.exibirCaminho(atual)
-                    return caminho, atual.v2, limite
-                
-                # Gera sucessores; esperado: [(estado_suc, custo_aresta), ...]
+                    return self.exibirCaminho(atual), g, limite
+
                 ind = nos.index(atual.estado)
                 filhos = self.sucessores_grafo(ind, grafo, 1)
-                
-                for novo in filhos:
-                    # custo acumulado até o sucessor
-                    v2 = valor_atual + novo[1]
-                    v1 = v2 + self.heuristica_grafo(nos,novo[0],fim) 
-                    
-                    # Verifica se está dentro do limite
-                    if v1<=limite:
-                        # Não visitado ou custo melhor
-                        if (novo[0] not in visitado) or (v2 < visitado[novo[0]].v2):
-                            filho = NodeP(atual, novo[0], v1, None, None, v2)
-                            visitado[novo[0]] = filho
-                            self.inserir_ordenado(lista, filho)
-                    else:
-                        lim_acima.append(v1)
-            
-            limite = sum(lim_acima)/len(lim_acima)
-            lista.clear()
-            visitado.clear()
-            filhos.clear()
-                        
-            return None
+                for (suc, w) in filhos:
+                    g2 = g + float(w)
+
+                    if (suc in visitado) and (g2 >= visitado[suc].v2):
+                        continue
+
+                    h2 = float(self.heuristica_grafo(nos, fim, suc))
+                    f2 = g2 + h2
+                    filho = NodeP(atual, suc, f2, None, None, g2)
+                    visitado[suc] = filho
+                    self.inserir_ordenado(lista, filho)
+
+
+            if min_acima == float("inf"):
+                return None
+
+            limite = min_acima
+
