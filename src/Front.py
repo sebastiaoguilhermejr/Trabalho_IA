@@ -34,8 +34,15 @@ def carregar_grafo_do_arquivo():
     grafo_str = '\n'.join(','.join(f"[{x[0]},{x[1]}]" for x in adj) for adj in grafo)
     return nos, grafo, nos_str, grafo_str, None
 
+def update_opcoes_text(text):
+    """Função auxiliar para atualizar o conteúdo do widget de texto."""
+    opcoes_text_widget.config(state=tk.NORMAL)
+    opcoes_text_widget.delete('1.0', tk.END)
+    opcoes_text_widget.insert(tk.END, text)
+    opcoes_text_widget.config(state=tk.DISABLED)
+
 def exibir_grafo():
-    global tipo_var, inicio_var, destino_var, pontos_var, opcoes_label
+    global tipo_var, inicio_var, destino_var, pontos_var
     metodo = tipo_var.get()
     inicio_str = inicio_var.get()
     destino_str = destino_var.get()
@@ -73,7 +80,7 @@ def exibir_grafo():
         for idx, (cam, cst) in enumerate(opcoes):
             texto_opcoes += f'Opção {idx+1}: {cam} | Custo: {cst}\n'
         texto_opcoes += f'\nMelhor caminho: {melhor_caminho} | Menor custo: {melhor_custo}'
-        opcoes_label.config(text=texto_opcoes)
+        update_opcoes_text(texto_opcoes)
 
         # Grafo completo
         G = nx.Graph()
@@ -109,7 +116,7 @@ def exibir_grafo():
         except Exception as e:
             messagebox.showerror('Erro', f'Falha ao exibir imagem: {e}')
     except Exception as e:
-        opcoes_label.config(text=f'Não foi possível encontrar caminho. Erro: {e}')
+        update_opcoes_text(f'Não foi possível encontrar caminho. Erro: {e}')
     nos_str = ','.join(str(n) for n in nos)
     grafo_str = '\n'.join(','.join(str(x) for x in adj) for adj in grafo)
     return nos, grafo, nos_str, grafo_str, None
@@ -175,7 +182,7 @@ def main():
         for idx, (cam, cst) in enumerate(opcoes):
             texto_opcoes += f'Opção {idx+1}: {cam} | Custo: {cst}\n'
         texto_opcoes += f'\nMelhor caminho: {melhor_caminho} | Menor custo: {melhor_custo}'
-        opcoes_label.config(text=texto_opcoes)
+        update_opcoes_text(texto_opcoes)
         lim_max_str = lim_max_var.get()
         try:
             inicio = int(inicio_str)
@@ -218,7 +225,7 @@ def main():
                 if caminho_total:
                     melhores.append((caminho_total, custo_total))
         if not melhores:
-            opcoes_label.config(text='Nenhum caminho encontrado.')
+            update_opcoes_text('Nenhum caminho encontrado.')
             return
         # Exibe todos os caminhos e custos calculados no console
         print('Caminhos e custos calculados:')
@@ -229,7 +236,7 @@ def main():
         # Filtra apenas caminhos válidos (custo < infinito e caminho não vazio)
         melhores_validos = [(cam, cst) for cam, cst in melhores if cam and cst is not None and cst < float('inf')]
         if not melhores_validos:
-            opcoes_label.config(text='Nenhum caminho válido encontrado.')
+            update_opcoes_text('Nenhum caminho válido encontrado.')
             messagebox.showinfo('Melhor Caminho', f'Método: {metodo}\nNenhum caminho válido encontrado.')
             return
         print('Caminhos e custos válidos:')
@@ -245,7 +252,7 @@ def main():
         # Exibe recomendação apenas se menor_caminho_global e menor_custo_global foram definidos localmente
         if 'menor_caminho_global' in locals() and 'menor_custo_global' in locals() and menor_caminho_global and menor_custo_global is not None:
             texto_opcoes += f'\nRecomendação: Menor caminho global (AMPLITUDE):\n{menor_caminho_global} | Custo: {menor_custo_global}\n'
-        opcoes_label.config(text=texto_opcoes)
+        update_opcoes_text(texto_opcoes)
         # Mensagem popup informando o melhor caminho escolhido e recomendação
         msg_popup = f'Método: {metodo}\nO melhor caminho escolhido foi: {melhor_caminho}\nCusto: {melhor_custo}'
         if 'menor_caminho_global' in locals() and 'menor_custo_global' in locals() and menor_caminho_global and menor_custo_global is not None:
@@ -287,7 +294,7 @@ def main():
                     exibir_grafo.img_label.pack(pady=10)
             except Exception as e:
                 messagebox.showerror('Erro', f'Falha ao exibir imagem: {e}')
-    global tipo_var, inicio_var, destino_var, pontos_var, opcoes_label, lim_var, lim_max_var
+    global tipo_var, inicio_var, destino_var, pontos_var, opcoes_text_widget, lim_var, lim_max_var
     root = tk.Tk()
     root.title('Interface Tkinter')
 
@@ -342,9 +349,23 @@ def main():
     btn_melhor = tk.Button(root, text='Melhor Caminho', command=mostrar_melhor_caminho)
     btn_melhor.pack(pady=10)
 
-    # Label para mostrar opções de caminhos e melhor caminho
-    opcoes_label = tk.Label(root, text='', justify=tk.LEFT, font=('Arial', 10))
-    opcoes_label.pack(pady=10)
+    # --- NOVO WIDGET DE TEXTO COM BARRA DE ROLAGEM ---
+    # Frame para conter a área de texto rolável
+    frame_opcoes = tk.Frame(root)
+    frame_opcoes.pack(pady=10, fill=tk.BOTH, expand=True)
+
+    # Scrollbar
+    scrollbar = tk.Scrollbar(frame_opcoes)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    # Área de texto para mostrar opções de caminhos
+    opcoes_text_widget = tk.Text(frame_opcoes, wrap=tk.WORD, yscrollcommand=scrollbar.set, font=('Arial', 10), height=10)
+    opcoes_text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    opcoes_text_widget.config(state=tk.DISABLED) # Começa como apenas leitura
+
+    # Configurar a scrollbar para controlar a área de texto
+    scrollbar.config(command=opcoes_text_widget.yview)
+    # --- FIM DO NOVO WIDGET ---
 
     root.mainloop()
 
