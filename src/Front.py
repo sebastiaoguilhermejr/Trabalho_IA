@@ -242,22 +242,15 @@ def main():
         texto_opcoes += 'Outras opções pelo método selecionado:\n'
         for idx, (cam, cst) in enumerate(melhores_validos[1:]):
             texto_opcoes += f'Opção {idx+2}: {cam} | Custo: {cst}\n'
-        # Só exibe recomendação se as variáveis existirem
-        menor_caminho_global = globals().get('menor_caminho_global', None)
-        menor_custo_global = globals().get('menor_custo_global', None)
-        if menor_caminho_global and menor_custo_global is not None:
+        # Exibe recomendação apenas se menor_caminho_global e menor_custo_global foram definidos localmente
+        if 'menor_caminho_global' in locals() and 'menor_custo_global' in locals() and menor_caminho_global and menor_custo_global is not None:
             texto_opcoes += f'\nRecomendação: Menor caminho global (AMPLITUDE):\n{menor_caminho_global} | Custo: {menor_custo_global}\n'
-        else:
-            texto_opcoes += '\nRecomendação: Não foi possível encontrar o menor caminho global.\n'
         opcoes_label.config(text=texto_opcoes)
         # Mensagem popup informando o melhor caminho escolhido e recomendação
         msg_popup = f'Método: {metodo}\nO melhor caminho escolhido foi: {melhor_caminho}\nCusto: {melhor_custo}'
-        menor_caminho_global = globals().get('menor_caminho_global', None)
-        menor_custo_global = globals().get('menor_custo_global', None)
-        if menor_caminho_global and menor_custo_global is not None:
+        if 'menor_caminho_global' in locals() and 'menor_custo_global' in locals() and menor_caminho_global and menor_custo_global is not None:
             msg_popup += f'\n\nRecomendação: Menor caminho global (AMPLITUDE):\n{menor_caminho_global} | Custo: {menor_custo_global}'
-        else:
-            msg_popup += '\n\nRecomendação: Não foi possível encontrar o menor caminho global.'
+       
         messagebox.showinfo('Melhor Caminho', msg_popup)
         # Exibir o caminho percorrido sobre o grafo completo
         if melhor_caminho and len(melhor_caminho) > 1:
@@ -335,7 +328,10 @@ def main():
         'APROFUNDAMENTO_ITERATIVO',
         'BUSCA BIDIRECIONAL',
         'BIDIRECIONAL',
-        'CUSTO UNIFORME'
+        'CUSTO_UNIFORME',
+        'GREEDY',
+        'A_ESTRELA',
+        'AIA_ESTRELA'
     ]
     tipo_combo.pack(pady=10)
 
