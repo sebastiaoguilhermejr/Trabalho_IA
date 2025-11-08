@@ -1,0 +1,88 @@
+LeiaMe - Instruções rápidas (Português)
+
+Descrição
+---------
+Este repositório contém uma implementação do Problema do Caixeiro Viajante (TSP) com várias heurísticas e uma interface gráfica (Tkinter).
+
+Arquivos principais
+------------------
+- src/TSP.py  — Backend do TSP (geração de matriz de distâncias, inicializadores e algoritmos: subida de encosta, têmpera simulada, algoritmo genético, etc.).
+- src/Front.py — Interface gráfica (classe `TSPInterface`) para gerar o problema, criar solução inicial, selecionar e executar métodos, e visualizar resultados.
+- requirements.txt — Dependências Python necessárias.
+
+Instalar dependências
+---------------------
+Abra um terminal (bash) na raiz do projeto e execute:
+
+```bash
+python -m pip install -r requirements.txt
+```
+
+Executar a interface gráfica
+----------------------------
+Na raiz do projeto (onde está este arquivo), execute:
+
+```bash
+# opção A: rodar a partir da pasta raiz
+python src/Front.py
+
+# opção B: entrar na pasta src e rodar
+cd src
+python Front.py
+```
+
+Observações importantes
+----------------------
+- O TSP exige pelo menos 30 cidades; se você informar um número menor, a interface exibirá um erro.
+- O arquivo `src/TSP.py` manteve os métodos originais em inglês (para compatibilidade) e adicionou aliases em português. A interface (`src/Front.py`) foi adaptada para usar os nomes em português.
+
+Mapeamento de identificadores (inglês → português)
+--------------------------------------------------
+Backend (`src/TSP.py`):
+- num_cities → num_cidades (atributo alias)
+- distances → distancias (atributo alias)
+- _generate_distance_matrix() → gerar_matriz_distancias() (alias)
+- calculate_route_length(route) → calcular_comprimento_rota(rota) (alias)
+- generate_initial_solution() → gerar_solucao_inicial() (alias)
+- nearest_neighbor(start) → vizinho_mais_proximo(inicio) (alias)
+- hill_climbing(...) → subida_de_encosta(...) (alias)
+- hill_climbing_with_restarts(...) → subida_de_encosta_com_tentativas(...) (alias)
+- simulated_annealing(...) → tempera_simulada(...) (alias)
+- genetic_algorithm(...) → algoritmo_genetico(...) (alias)
+
+Frontend (`src/Front.py`) — nomes usados na UI em português:
+- gerar_problema()  (antes: generate_problem)
+- gerar_solucao_inicial()  (antes: generate_initial_solution)
+- executar_metodo()  (antes: run_method)
+- desenhar_grafo()  (antes: draw_graph)
+- _adicionar_resultado()  (antes: _append_result)
+- num_cidades_var  (antes: size_var)
+- inicializador_var  (antes: init_var)
+- metodo_var  (antes: method_var)
+- texto_resultados  (antes: results_text)
+- rota_tsp  (antes: tsp_route)
+
+Compatibilidade
+---------------
+- As funções/atributos em inglês continuam existentes em `src/TSP.py`, por isso código externo que usava os nomes antigos continuará funcionando.
+- A interface `src/Front.py` já está atualizada para utilizar os nomes em português.
+
+Testes rápidos
+--------------
+Para verificar que os módulos importam corretamente, execute (na raiz do projeto):
+
+```bash
+python -c "import sys; sys.path.append('src'); import Front, TSP; print('Import OK:', TSP.TSP(30).num_cidades)"
+```
+
+Problemas comuns
+----------------
+- Erro ao abrir GUI: certifique-se de ter um ambiente com suporte gráfico (no WSL pode ser necessário encaminhar X/usar X server).
+- Problemas de dependência: verifique a versão do Python e reinstale as dependências com o comando de instalação acima.
+
+Se quiser, posso também:
+- Traduzir/remover os nomes em inglês (refactor completo) — atenção: isso quebra compatibilidade com código externo.
+- Adicionar parâmetros da SA/GA na interface (temperatura, tamanho da população, gerações).
+- Rodar testes automáticos de importação/execução (já validei importação localmente).
+
+Obrigado — avise o que deseja que eu faça a seguir.

@@ -1,373 +1,175 @@
-import itertools
 import tkinter as tk
-from tkinter import messagebox
-from tkinter import ttk
-import os
+from tkinter import ttk, messagebox
 import networkx as nx
 import matplotlib.pyplot as plt
-from PIL import Image, ImageTk
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import os
+import importlib.util
 
-def carregar_grafo_do_arquivo():
-    nos = []
-    grafo = []
-    caminho = os.path.join(os.path.dirname(__file__), '..', 'data', 'problema.txt')
+
+def _load_tsp_class():
     try:
-        with open(caminho, 'r') as f:
-            for linha in f:
-                parte_no, parte_adj = linha.split(':')
-                no = int(parte_no.strip())
-                adj = parte_adj.strip().replace('[', '').replace(']', '').split(',')
-                adj = [x.strip() for x in adj if x.strip()]
-                # Se o grafo tem pesos, cada par (vizinho, peso)
-                adj_pesos = []
-                i = 0
-                while i < len(adj):
-                    vizinho = int(adj[i])
-                    peso = int(adj[i+1]) if i+1 < len(adj) else 1
-                    adj_pesos.append([vizinho, peso])
-                    i += 2
-                nos.append(no)
-                grafo.append(adj_pesos)
-    except Exception as e:
-        return [], [], [], '', f"Erro ao ler problema.txt: {e}"
-    nos_str = ','.join(str(n) for n in nos)
-    grafo_str = '\n'.join(','.join(f"[{x[0]},{x[1]}]" for x in adj) for adj in grafo)
-    return nos, grafo, nos_str, grafo_str, None
+        from TSP import TSP
+        return TSP
+    except Exception:
+        path = os.path.join(os.path.dirname(__file__), 'TSP.py')
+        spec = importlib.util.spec_from_file_location('TSP', path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod.TSP
 
-def update_opcoes_text(text):
-    """Função auxiliar para atualizar o conteúdo do widget de texto."""
-    opcoes_text_widget.config(state=tk.NORMAL)
-    opcoes_text_widget.delete('1.0', tk.END)
-    opcoes_text_widget.insert(tk.END, text)
-    opcoes_text_widget.config(state=tk.DISABLED)
 
-def exibir_grafo():
-    global tipo_var, inicio_var, destino_var, pontos_var
-    metodo = tipo_var.get()
-    inicio_str = inicio_var.get()
-    destino_str = destino_var.get()
-    pontos_str = pontos_var.get()
-    lim_str = lim_var.get()
-    lim_max_str = lim_max_var.get()
-    try:
-        inicio = int(inicio_str)
-        destino = int(destino_str)
-        pontos = [int(x) for x in pontos_str.split(',') if x.strip()] if pontos_str else []
-        lim = int(lim_str) if lim_str else None
-        lim_max = int(lim_max_str) if lim_max_str else None
-    except ValueError:
-        messagebox.showerror('Erro', 'Informe valores inteiros para início, destino, pontos intermediários, lim e lim_max.')
-        return
-    nos, grafo, nos_str, grafo_str, erro = carregar_grafo_do_arquivo()
-    if erro:
-        messagebox.showerror('Erro', erro)
-        return
-    # Sempre mostrar o grafo completo, destacando o caminho percorrido
-    try:
-        from PickingSlotting import PickingSlotting
-        ps = PickingSlotting(nos, grafo)
-        picklist = pontos + [destino]
-        if metodo in ['PROFUNDIDADE_LIMITADA', 'PROF_LIMITADA', 'APROFUNDAMENTO_ITERATIVO']:
-            caminho, custo = ps.resolver_picking(inicio, picklist, metodo, lim=lim, lim_max=lim_max)
-        else:
-            caminho, custo = ps.resolver_picking(inicio, picklist, metodo)
-        # Mostrar opções e melhor caminho
-        opcoes = []
-        melhor_caminho = caminho
-        melhor_custo = custo
-        opcoes.append((caminho, custo))
-        texto_opcoes = ''
-        for idx, (cam, cst) in enumerate(opcoes):
-            texto_opcoes += f'Opção {idx+1}: {cam} | Custo: {cst}\n'
-        texto_opcoes += f'\nMelhor caminho: {melhor_caminho} | Menor custo: {melhor_custo}'
-        update_opcoes_text(texto_opcoes)
+TSP = _load_tsp_class()
 
-        # Grafo completo
-        G = nx.Graph()
-        for i, adj in zip(nos, grafo):
-            for item in adj:
-                if isinstance(item, (list, tuple)) and len(item) >= 1:
-                    vizinho = item[0]
-                else:
-                    vizinho = item
-                G.add_edge(i, vizinho)
-        # Destaca os nós e arestas do caminho
-        edges_caminho = list(zip(melhor_caminho, melhor_caminho[1:])) if melhor_caminho else []
-        node_colors = ['orange' if melhor_caminho and n in melhor_caminho else 'lightblue' for n in G.nodes()]
-        edge_colors = ['red' if melhor_caminho and ((u, v) in edges_caminho or (v, u) in edges_caminho) else 'gray' for u, v in G.edges()]
-        pos = nx.spring_layout(G)
-        plt.figure(figsize=(8, 6))
-        nx.draw(G, pos, with_labels=True, node_color=node_colors, edge_color=edge_colors, width=2, font_weight='bold', node_size=600)
-        plt.title(f'Caminho Percorrido: {melhor_caminho}')
-        img_path = os.path.join(os.path.dirname(__file__), 'grafo_temp.png')
-        plt.savefig(img_path)
-        plt.close()
+
+class TSPInterface:
+    """UI enxuta para o Problema do Caixeiro Viajante (TSP) - versão em português de identificadores.
+
+    Observação: os métodos do backend `TSP` também fornecem aliases em português; aqui a interface usa
+    esses nomes em português para variáveis e callbacks.
+    """
+
+    def __init__(self, root):
+        self.root = root
+        self.root.title('Problema do Caixeiro Viajante - TSP')
+        self.tsp = None
+        self.rota_tsp = None
+        self._construir_interface()
+
+    def _construir_interface(self):
+        main = ttk.Frame(self.root, padding=8)
+        main.grid(row=0, column=0, sticky=(tk.N, tk.S, tk.E, tk.W))
+
+        # Linha 0: tamanho, gerar problema, inicializador
+        ttk.Label(main, text='Número de cidades (>=30):').grid(row=0, column=0, sticky=tk.W)
+        self.num_cidades_var = tk.StringVar(value='30')
+        ttk.Entry(main, textvariable=self.num_cidades_var, width=6).grid(row=0, column=1, sticky=tk.W, padx=4)
+        ttk.Button(main, text='Gerar Problema', command=self.gerar_problema).grid(row=0, column=2, padx=6)
+
+        ttk.Label(main, text='Inicializador:').grid(row=0, column=3, sticky=tk.W, padx=(12, 0))
+        self.inicializador_var = tk.StringVar(value='Aleatória')
+        opcoes_inicializador = ['Aleatória', 'Vizinho mais próximo']
+        self.init_combo = ttk.Combobox(main, textvariable=self.inicializador_var, values=opcoes_inicializador, state='readonly', width=18)
+        self.init_combo.grid(row=0, column=4, padx=4)
+        ttk.Button(main, text='Gerar Solução Inicial', command=self.gerar_solucao_inicial).grid(row=0, column=5, padx=6)
+
+        # Linha 1: seleção de método e executar
+        ttk.Label(main, text='Método de busca local:').grid(row=1, column=0, sticky=tk.W, pady=8)
+        self.metodo_var = tk.StringVar(value='Subida de encosta')
+        opcoes_metodos = [
+            'Subida de encosta',
+            'Subida de encosta com tentativas',
+            'Têmpera simulada',
+            'Algoritmos genéticos',
+        ]
+        self.method_combo = ttk.Combobox(main, textvariable=self.metodo_var, values=opcoes_metodos, state='readonly', width=36)
+        self.method_combo.grid(row=1, column=1, columnspan=3, sticky=(tk.W, tk.E))
+        ttk.Button(main, text='Executar Método', command=self.executar_metodo).grid(row=1, column=5, padx=6)
+
+        # Linha 2+: área de resultados e canvas
+        ttk.Label(main, text='Resultados:').grid(row=2, column=0, sticky=tk.W, pady=(8, 0))
+        self.texto_resultados = tk.Text(main, width=70, height=12, wrap=tk.WORD)
+        self.texto_resultados.grid(row=3, column=0, columnspan=5, sticky=(tk.W, tk.E), pady=4)
+
+        # Canvas matplotlib na coluna 6
+        self.fig, self.ax = plt.subplots(figsize=(6, 5))
+        self.canvas = FigureCanvasTkAgg(self.fig, master=main)
+        self.canvas.get_tk_widget().grid(row=0, column=6, rowspan=6, padx=10, pady=4)
+
+        # Configura pesos de grid
+        for i in range(6):
+            main.columnconfigure(i, weight=0)
+        main.columnconfigure(6, weight=1)
+        self.root.columnconfigure(0, weight=1)
+        self.root.rowconfigure(0, weight=1)
+
+    def _adicionar_resultado(self, texto):
+        self.texto_resultados.insert(tk.END, texto)
+        self.texto_resultados.see(tk.END)
+
+    def gerar_problema(self):
         try:
-            img = Image.open(img_path)
-            img = img.resize((300, 240))
-            img_tk = ImageTk.PhotoImage(img)
-            if hasattr(exibir_grafo, 'img_label'):
-                exibir_grafo.img_label.config(image=img_tk)
-                exibir_grafo.img_label.image = img_tk
-            else:
-                exibir_grafo.img_label = tk.Label(exibir_grafo.root, image=img_tk)
-                exibir_grafo.img_label.image = img_tk
-                exibir_grafo.img_label.pack(pady=10)
+            n = int(self.num_cidades_var.get())
+        except ValueError:
+            messagebox.showerror('Erro', 'Informe um número inteiro válido para o tamanho do problema.')
+            return
+        if n < 30:
+            messagebox.showerror('Erro', 'O número de cidades deve ser pelo menos 30.')
+            return
+        try:
+            self.tsp = TSP(n)
+            self.rota_tsp = None
+            self._adicionar_resultado(f'Problema gerado: {n} cidades\n')
+            self.desenhar_grafo()
         except Exception as e:
-            messagebox.showerror('Erro', f'Falha ao exibir imagem: {e}')
-    except Exception as e:
-        update_opcoes_text(f'Não foi possível encontrar caminho. Erro: {e}')
-    nos_str = ','.join(str(n) for n in nos)
-    grafo_str = '\n'.join(','.join(str(x) for x in adj) for adj in grafo)
-    return nos, grafo, nos_str, grafo_str, None
+            messagebox.showerror('Erro', f'Falha ao gerar problema TSP: {e}')
 
-def processar_formulario():
-    nos, grafo, nos_str, grafo_str, erro = carregar_grafo_do_arquivo()
-    if erro:
-        messagebox.showerror('Erro', erro)
-    else:
-        msg = f'Nós: {nos_str}\nGrafo:\n{grafo_str}'
-        messagebox.showinfo('Dados do Grafo', msg)
+    def gerar_solucao_inicial(self):
+        if not self.tsp:
+            messagebox.showerror('Erro', 'Primeiro gere o problema (Gerar Problema).')
+            return
+        init_method = self.inicializador_var.get()
+        if init_method == 'Vizinho mais próximo':
+            try:
+                rota = self.tsp.vizinho_mais_proximo(inicio=0)
+            except Exception as e:
+                messagebox.showerror('Erro', f'Falha no inicializador Vizinho mais próximo: {e}')
+                return
+        else:
+            rota = self.tsp.gerar_solucao_inicial()
+        dist = self.tsp.calcular_comprimento_rota(rota)
+        self.rota_tsp = rota
+        self._adicionar_resultado(f"Rota inicial ({init_method}): {' -> '.join(map(str, rota))}\nDistância: {dist:.2f}\n\n")
+        self.desenhar_grafo(rota)
 
+    def executar_metodo(self):
+        if not self.tsp:
+            messagebox.showerror('Erro', 'Primeiro gere o problema (Gerar Problema).')
+            return
+        method = self.metodo_var.get()
+        if method == 'Subida de encosta':
+            rota, dist = self.tsp.subida_de_encosta()
+        elif method == 'Subida de encosta com tentativas':
+            rota, dist = self.tsp.subida_de_encosta_com_tentativas()
+        elif method == 'Têmpera simulada':
+            rota, dist = self.tsp.tempera_simulada()
+        elif method == 'Algoritmos genéticos':
+            rota, dist = self.tsp.algoritmo_genetico()
+        else:
+            messagebox.showerror('Erro', 'Método desconhecido')
+            return
+        self.rota_tsp = rota
+        self._adicionar_resultado(f"Método: {method}\nDistância total: {dist:.2f}\nRota: {' -> '.join(map(str, rota))}\n\n")
+        self.desenhar_grafo(rota)
 
-
-
-
+    def desenhar_grafo(self, rota=None):
+        self.ax.clear()
+        if not self.tsp:
+            self.ax.text(0.5, 0.5, 'Nenhum problema gerado', horizontalalignment='center', verticalalignment='center')
+            self.canvas.draw()
+            return
+        n = self.tsp.num_cidades
+        G = nx.complete_graph(n)
+        pos = nx.circular_layout(G)
+        # Draw nodes
+        nx.draw_networkx_nodes(G, pos, ax=self.ax, node_color='lightblue', node_size=200)
+        nx.draw_networkx_labels(G, pos, ax=self.ax, font_size=8)
+        # If rota fornecida, destacar arestas da rota
+        if rota:
+            edges = [(rota[i], rota[(i + 1) % len(rota)]) for i in range(len(rota))]
+            nx.draw_networkx_edges(G, pos, ax=self.ax, edgelist=edges, edge_color='red', width=2)
+        else:
+            nx.draw_networkx_edges(G, pos, ax=self.ax, alpha=0.2)
+        self.ax.set_title('Grafo TSP' + (' - Rota' if rota else ''))
+        self.ax.axis('off')
+        self.canvas.draw()
 
 
 def main():
-    # global já declarado no início da função main
-    def mostrar_melhor_caminho():
-        metodo = tipo_var.get()
-        inicio_str = inicio_var.get()
-        destino_str = destino_var.get()
-        pontos_str = pontos_var.get()
-        lim_str = lim_var.get()
-        lim_max_str = lim_max_var.get()
-        try:
-            inicio = int(inicio_str)
-            destino = int(destino_str)
-            pontos = [int(x) for x in pontos_str.split(',') if x.strip()] if pontos_str else []
-            lim = int(lim_str) if lim_str else None
-            lim_max = int(lim_max_str) if lim_max_str else None
-        except ValueError:
-            messagebox.showerror('Erro', 'Informe valores inteiros para início, destino, pontos intermediários, lim e lim_max.')
-            return
-        nos, grafo, nos_str, grafo_str, erro = carregar_grafo_do_arquivo()
-        if erro:
-            messagebox.showerror('Erro', erro)
-            return
-        # Calcula o menor caminho global usando AMPLITUDE
-        from PickingSlotting import PickingSlotting
-        ps_global = PickingSlotting(nos, grafo)
-        if metodo == 'CUSTO UNIFORME':
-            from BuscaP import busca
-            buscador = busca()
-            caminho, custo = buscador.custo_uniforme(inicio, destino, nos, grafo)
-            opcoes = [(caminho, custo)]
-            melhor_caminho = caminho
-            melhor_custo = custo
-        else:
-            from PickingSlotting import PickingSlotting
-            ps = PickingSlotting(nos, grafo)
-            picklist = pontos + [destino]
-            if metodo in ['PROFUNDIDADE_LIMITADA', 'PROF_LIMITADA', 'APROFUNDAMENTO_ITERATIVO']:
-                caminho, custo = ps.resolver_picking(inicio, picklist, metodo, lim=lim, lim_max=lim_max)
-            else:
-                caminho, custo = ps.resolver_picking(inicio, picklist, metodo)
-            opcoes = [(caminho, custo)]
-            melhor_caminho = caminho
-            melhor_custo = custo
-        texto_opcoes = ''
-        for idx, (cam, cst) in enumerate(opcoes):
-            texto_opcoes += f'Opção {idx+1}: {cam} | Custo: {cst}\n'
-        texto_opcoes += f'\nMelhor caminho: {melhor_caminho} | Menor custo: {melhor_custo}'
-        update_opcoes_text(texto_opcoes)
-        lim_max_str = lim_max_var.get()
-        try:
-            inicio = int(inicio_str)
-            destino = int(destino_str)
-            pontos = [int(x) for x in pontos_str.split(',') if x.strip()] if pontos_str else []
-            lim = int(lim_str) if lim_str else None
-            lim_max = int(lim_max_str) if lim_max_str else None
-        except ValueError:
-            messagebox.showerror('Erro', 'Informe valores inteiros para início, destino, pontos intermediários, lim e lim_max.')
-            return
-        nos, grafo, nos_str, grafo_str, erro = carregar_grafo_do_arquivo()
-        if erro:
-            messagebox.showerror('Erro', erro)
-            return
-        from PickingSlotting import PickingSlotting
-        ps = PickingSlotting(nos, grafo)
-        melhores = []
-        pontos_sem_destino = [p for p in pontos if p != destino]
-        print(f'INICIO: {inicio}, DESTINO: {destino}, PONTOS: {pontos}, METODO: {metodo}, LIM: {lim}, LIM_MAX: {lim_max}')
-        # Se não há pontos intermediários, só testa o caminho direto
-        if not pontos_sem_destino:
-            P = [inicio, destino]
-            print(f'Testando ordem: {P}')
-            matriz = ps.fechamento_metrico(P, method=metodo, lim=lim, lim_max=lim_max)
-            print(f'Matriz de custos: {matriz}')
-            ordem_idx = [0, 1]
-            caminho_total, custo_total = ps.custo_e_rota_expandida(ordem_idx, P, method=metodo, lim=lim, lim_max=lim_max, fechar_ciclo=False)
-            print(f'Resultado: Caminho: {caminho_total} | Custo: {custo_total}')
-            if caminho_total:
-                melhores.append((caminho_total, custo_total))
-        else:
-            for perm in itertools.permutations(pontos_sem_destino):
-                P = [inicio] + list(perm) + [destino]
-                print(f'Testando ordem: {P}')
-                matriz = ps.fechamento_metrico(P, method=metodo, lim=lim, lim_max=lim_max)
-                print(f'Matriz de custos: {matriz}')
-                ordem_idx = list(range(len(P)))
-                caminho_total, custo_total = ps.custo_e_rota_expandida(ordem_idx, P, method=metodo, lim=lim, lim_max=lim_max, fechar_ciclo=False)
-                print(f'Resultado: Caminho: {caminho_total} | Custo: {custo_total}')
-                if caminho_total:
-                    melhores.append((caminho_total, custo_total))
-        if not melhores:
-            update_opcoes_text('Nenhum caminho encontrado.')
-            return
-        # Exibe todos os caminhos e custos calculados no console
-        print('Caminhos e custos calculados:')
-        for idx, (cam, cst) in enumerate(melhores):
-            print(f'Opção {idx+1}: {cam} | Custo: {cst}')
-        melhores.sort(key=lambda x: x[1])
-        melhor_caminho, melhor_custo = melhores[0]
-        # Filtra apenas caminhos válidos (custo < infinito e caminho não vazio)
-        melhores_validos = [(cam, cst) for cam, cst in melhores if cam and cst is not None and cst < float('inf')]
-        if not melhores_validos:
-            update_opcoes_text('Nenhum caminho válido encontrado.')
-            messagebox.showinfo('Melhor Caminho', f'Método: {metodo}\nNenhum caminho válido encontrado.')
-            return
-        print('Caminhos e custos válidos:')
-        for idx, (cam, cst) in enumerate(melhores_validos):
-            print(f'Opção {idx+1}: {cam} | Custo: {cst}')
-        melhores_validos.sort(key=lambda x: x[1])
-        melhor_caminho, melhor_custo = melhores_validos[0]
-        texto_opcoes = 'Melhor caminho encontrado pelo método selecionado:\n'
-        texto_opcoes += f'{melhor_caminho} | Custo: {melhor_custo}\n\n'
-        texto_opcoes += 'Outras opções pelo método selecionado:\n'
-        for idx, (cam, cst) in enumerate(melhores_validos[1:]):
-            texto_opcoes += f'Opção {idx+2}: {cam} | Custo: {cst}\n'
-        # Exibe recomendação apenas se menor_caminho_global e menor_custo_global foram definidos localmente
-        if 'menor_caminho_global' in locals() and 'menor_custo_global' in locals() and menor_caminho_global and menor_custo_global is not None:
-            texto_opcoes += f'\nRecomendação: Menor caminho global (AMPLITUDE):\n{menor_caminho_global} | Custo: {menor_custo_global}\n'
-        update_opcoes_text(texto_opcoes)
-        # Mensagem popup informando o melhor caminho escolhido e recomendação
-        msg_popup = f'Método: {metodo}\nO melhor caminho escolhido foi: {melhor_caminho}\nCusto: {melhor_custo}'
-        if 'menor_caminho_global' in locals() and 'menor_custo_global' in locals() and menor_caminho_global and menor_custo_global is not None:
-            msg_popup += f'\n\nRecomendação: Menor caminho global (AMPLITUDE):\n{menor_caminho_global} | Custo: {menor_custo_global}'
-       
-        messagebox.showinfo('Melhor Caminho', msg_popup)
-        # Exibir o caminho percorrido sobre o grafo completo
-        if melhor_caminho and len(melhor_caminho) > 1:
-            # Grafo completo
-            G = nx.Graph()
-            for i, adj in zip(nos, grafo):
-                for item in adj:
-                    if isinstance(item, (list, tuple)) and len(item) >= 1:
-                        vizinho = item[0]
-                    else:
-                        vizinho = item
-                    G.add_edge(i, vizinho)
-            # Destaca os nós e arestas do caminho
-            edges_caminho = list(zip(melhor_caminho, melhor_caminho[1:]))
-            node_colors = ['orange' if n in melhor_caminho else 'lightblue' for n in G.nodes()]
-            edge_colors = ['red' if (u, v) in edges_caminho or (v, u) in edges_caminho else 'gray' for u, v in G.edges()]
-            pos = nx.spring_layout(G)
-            plt.figure(figsize=(8, 6))
-            nx.draw(G, pos, with_labels=True, node_color=node_colors, edge_color=edge_colors, width=2, font_weight='bold', node_size=600)
-            plt.title(f'Melhor Caminho Percorrido: {melhor_caminho}')
-            img_path = os.path.join(os.path.dirname(__file__), 'grafo_temp.png')
-            plt.savefig(img_path)
-            plt.close()
-            try:
-                img = Image.open(img_path)
-                img = img.resize((300, 240))
-                img_tk = ImageTk.PhotoImage(img)
-                if hasattr(exibir_grafo, 'img_label'):
-                    exibir_grafo.img_label.config(image=img_tk)
-                    exibir_grafo.img_label.image = img_tk
-                else:
-                    exibir_grafo.img_label = tk.Label(root, image=img_tk)
-                    exibir_grafo.img_label.image = img_tk
-                    exibir_grafo.img_label.pack(pady=10)
-            except Exception as e:
-                messagebox.showerror('Erro', f'Falha ao exibir imagem: {e}')
-    global tipo_var, inicio_var, destino_var, pontos_var, opcoes_text_widget, lim_var, lim_max_var
     root = tk.Tk()
-    root.title('Interface Tkinter')
-
-    label = tk.Label(root, text='Bem-vindo à interface Tkinter!')
-    label.pack(pady=10)
-
-    # Campos de entrada para início, pontos intermediários e destino
-    inicio_var = tk.StringVar()
-    destino_var = tk.StringVar()
-    pontos_var = tk.StringVar()
-    frame_inputs = tk.Frame(root)
-    tk.Label(frame_inputs, text='Início:').pack(side=tk.LEFT)
-    tk.Entry(frame_inputs, textvariable=inicio_var, width=5).pack(side=tk.LEFT, padx=5)
-    tk.Label(frame_inputs, text='Pontos (separados por vírgula):').pack(side=tk.LEFT)
-    tk.Entry(frame_inputs, textvariable=pontos_var, width=15).pack(side=tk.LEFT, padx=5)
-    tk.Label(frame_inputs, text='Destino:').pack(side=tk.LEFT)
-    tk.Entry(frame_inputs, textvariable=destino_var, width=5).pack(side=tk.LEFT, padx=5)
-    # Campos para lim e lim_max
-    lim_var = tk.StringVar()
-    lim_max_var = tk.StringVar()
-    tk.Label(frame_inputs, text='Lim:').pack(side=tk.LEFT)
-    tk.Entry(frame_inputs, textvariable=lim_var, width=5).pack(side=tk.LEFT, padx=5)
-    tk.Label(frame_inputs, text='Lim_max:').pack(side=tk.LEFT)
-    tk.Entry(frame_inputs, textvariable=lim_max_var, width=5).pack(side=tk.LEFT, padx=5)
-    frame_inputs.pack(pady=10)
-
-    btn = tk.Button(root, text='Processar', command=processar_formulario)
-    btn.pack(pady=10)
-
-    # Combobox para método de busca
-    tipo_var = tk.StringVar(value='AMPLITUDE')
-    tipo_combo = ttk.Combobox(root, textvariable=tipo_var, state='readonly')
-    tipo_combo['values'] = [
-        'AMPLITUDE',
-        'PROFUNDIDADE',
-        'PROFUNDIDADE_LIMITADA',
-        'PROF_LIMITADA',
-        'APROFUNDAMENTO_ITERATIVO',
-        'BUSCA BIDIRECIONAL',
-        'BIDIRECIONAL',
-        'CUSTO_UNIFORME',
-        'GREEDY',
-        'A_ESTRELA',
-        'AIA_ESTRELA'
-    ]
-    tipo_combo.pack(pady=10)
-
-
-    btn_grafo = tk.Button(root, text='Exibir Grafo', command=exibir_grafo)
-    btn_grafo.pack(pady=10)
-
-    btn_melhor = tk.Button(root, text='Melhor Caminho', command=mostrar_melhor_caminho)
-    btn_melhor.pack(pady=10)
-
-    # --- NOVO WIDGET DE TEXTO COM BARRA DE ROLAGEM ---
-    # Frame para conter a área de texto rolável
-    frame_opcoes = tk.Frame(root)
-    frame_opcoes.pack(pady=10, fill=tk.BOTH, expand=True)
-
-    # Scrollbar
-    scrollbar = tk.Scrollbar(frame_opcoes)
-    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-
-    # Área de texto para mostrar opções de caminhos
-    opcoes_text_widget = tk.Text(frame_opcoes, wrap=tk.WORD, yscrollcommand=scrollbar.set, font=('Arial', 10), height=10)
-    opcoes_text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-    opcoes_text_widget.config(state=tk.DISABLED) # Começa como apenas leitura
-
-    # Configurar a scrollbar para controlar a área de texto
-    scrollbar.config(command=opcoes_text_widget.yview)
-    # --- FIM DO NOVO WIDGET ---
-
+    app = TSPInterface(root)
     root.mainloop()
+
 
 if __name__ == '__main__':
     main()
